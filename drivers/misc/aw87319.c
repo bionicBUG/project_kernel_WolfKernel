@@ -66,6 +66,7 @@ struct pinctrl_state *AW87319_rst_high = NULL;
 struct pinctrl_state *AW87319_rst_low = NULL;
 
 char Spk_Pa_Flag[] = " ";
+static int i2c_ok = 0;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // GPIO Control
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,24 +173,31 @@ unsigned char AW87319_Audio_Receiver(void)
 
 unsigned char AW87319_Audio_Speaker(void)
 {
-	AW87319_HW_ON();
-	I2C_write_reg(0x02, 0x36);		// BATSAFE -> Battery: 3.55V -> Boost 6V -> Software Enable
-	I2C_write_reg(0x03, 0x07);		// BOV (boost output voltage) -> 8.5V (Maximum)
-	I2C_write_reg(0x04, 0x07);		// BP (boost max coil peak current) ->  4A (Maximum)
-	I2C_write_reg(0x05, 0x0F);		// Gain (Default 24dB), set it to 27dB push to the max
-	I2C_write_reg(0x06, 0x0A);		// AGC3_Po (Default 0.8W for 8 Ohms and 1.07W for 6 Ohms), set it to 1.5W for 8 Ohms and 2W for 6 Ohms).
-	I2C_write_reg(0x07, 0x52);		// AGC3 (doesn't should be toutched)
-	I2C_write_reg(0x08, 0x64);		// AGC2 010: 1.8W@8Ω - 2.4W@6Ω, set it to 011: 011: 2.1W@8Ω 2.8W@6Ω and 0.32mS/dB
-	I2C_write_reg(0x09, 0x02);		// AGC1 (doesn't should be toutched)
-	I2C_write_reg(0x01, 0x03);              // CHIP disable; Class D Enable; Boost Enable
-	I2C_write_reg(0x01, 0x07); 		// CHIP Enable; Class D Enable; Boost Enable
+	if(i2c_ok < 0)
+		return 0;
 
+	AW87319_HW_ON();
+
+	// For some reason it can't write these values =(
+
+	I2C_write_reg(0x02, 0x28);		// BATSAFE
+	I2C_write_reg(0x03, 0x05);		// BOV
+	I2C_write_reg(0x04, 0x04);		// BP
+	I2C_write_reg(0x05, 0x0D);		// Gain
+	I2C_write_reg(0x06, 0x03);		// AGC3_Po
+	I2C_write_reg(0x07, 0x52);		// AGC3
+	I2C_write_reg(0x08, 0x28);		// AGC2
+	I2C_write_reg(0x09, 0x02);		// AGC1
+	I2C_write_reg(0x01, 0x03);              // CHIP disable; Class D Enable; Boost Enable
+	I2C_write_reg(0x01, 0x07);		// CHIP Enable; Class D Enable; Boost Enable
 	return 0;
 }
 
 unsigned char AW87319_Audio_OFF(void)
 {
-	I2C_write_reg(0x01, 0x00);
+	if(i2c_ok < 0)
+		return 0;
+	I2C_write_reg(0x01, 0x00); // -> the other issue is here.
 	AW87319_HW_OFF();
 
 	return 0;
@@ -218,7 +226,7 @@ unsigned char AW87319_SW_OFF(void)
 unsigned char AW87319_HW_ON(void)
 {
 	AW87319_pa_pwron();
-	I2C_write_reg(0x64, 0x2C);
+	I2C_write_reg(0x64, 0x2C); //-> The issue is here
 
 	return 0;
 }
@@ -383,7 +391,7 @@ static int AW87319_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	if(!cnt)
 	{
 		err = -ENODEV;
-		
+		i2c_ok = err;	
 		AW87319_HW_OFF();
 		strncpy(Spk_Pa_Flag, "S88537A12", 9);
 		pr_err("%s:can not find AW87319, board  is S88537A12\n!", __func__);
