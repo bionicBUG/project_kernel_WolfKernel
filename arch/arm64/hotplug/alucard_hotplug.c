@@ -735,7 +735,6 @@ static ssize_t store_hp_io_is_busy(struct kobject *a, struct attribute *b,
 					&pcpu_info->prev_cpu_wall, hotplug_tuners_ins.hp_io_is_busy);
 		}
 	}
-#endif
 	return count;
 }
 
